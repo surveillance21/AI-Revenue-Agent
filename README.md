@@ -188,21 +188,24 @@ python src/ask.py "What was the net recovery value?"
 | Total records processed | 700 |
 | Total failed payments | 75 (10.7% fail rate) |
 | **Total revenue at risk** | **INR 1,31,825** |
-| Payments recovered | 16 / 75 (21.3% of failed) |
-| **Revenue recovered** | **INR 19,484** |
-| **Recovery rate (by amount)** | **14.8%** |
+| Payments recovered | 23 / 75 (30.7% of failed) |
+| **Gross revenue recovered** | **INR 35,777** |
+| **Overall recovery rate (by amount)** | **27.1%** |
+| Overall recovery rate (by count) | 30.7% (23 / 75) |
+| **Recovery rate among GT-recoverable (amount)** *(new distinct metric)* | **53.1%** (INR 35,777 / INR 67,358) |
+| **Recovery rate among GT-recoverable (count)** *(new distinct metric)* | **54.8%** (23 / 42 recoverable cases) |
 | Correctly stopped (compliance guardrail) | 20 |
-| Still failed (not recovered) | 39 |
-| Missed recovery opportunity | 26 payments / INR 47,874 |
+| Still failed (unrecovered) | 32 (19 past T+7, 13 unrecoverable) |
+| Missed recovery opportunity (T+7 cutoff) | 19 payments / INR 31,581 |
 | False-positive retry cost | INR 195 (13 wasted retries x INR 15) |
 | Diagnosis classification errors | 0 |
-| **Net recovery value** | **INR 19,289** |
+| **Net recovery value** | **INR 35,582** |
 
 ### Outcome by Failure Reason
 
 | Failure Reason | Recovered | Still Failed | Correctly Stopped |
 |----------------|:---------:|:------------:|:-----------------:|
-| `insufficient_funds` | 6 | 21 | 2 |
+| `insufficient_funds` | 13 | 14 | 2 |
 | `mandate_expired` | 4 | 8 | 9 |
 | `mandate_revoked` | 0 | 0 | 6 |
 | `bank_technical_decline` | 4 | 5 | 0 |

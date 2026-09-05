@@ -100,6 +100,26 @@ def compute_metrics(failed_records: list) -> dict:
 
     recovered_amount = sum(r["amount_inr"] for r in recovered_records)
     recovery_rate_pct = (recovered_amount / total_at_risk * 100) if total_at_risk > 0 else 0.0
+    recovery_rate_count_pct = (recovered_count / total_failed * 100) if total_failed > 0 else 0.0
+
+    # --- Recovery rate among ground-truth-recoverable cases ---
+    # Formula: recovered / (recovered + still_failed_but_ground_truth_recoverable)
+    still_failed_recoverable_records = [
+        r for r in still_failed_records
+        if r.get("ground_truth_recoverable") is True
+    ]
+    still_failed_recoverable_count = len(still_failed_recoverable_records)
+    still_failed_recoverable_amount = sum(r["amount_inr"] for r in still_failed_recoverable_records)
+
+    gt_recoverable_count = recovered_count + still_failed_recoverable_count
+    gt_recoverable_amount = recovered_amount + still_failed_recoverable_amount
+
+    recovery_rate_among_recoverable_pct = (
+        (recovered_amount / gt_recoverable_amount * 100) if gt_recoverable_amount > 0 else 0.0
+    )
+    recovery_rate_among_recoverable_count_pct = (
+        (recovered_count / gt_recoverable_count * 100) if gt_recoverable_count > 0 else 0.0
+    )
 
     # --- Diagnosis errors ---
     # A diagnosis error is when we marked something as "correctly_stopped"
@@ -153,6 +173,13 @@ def compute_metrics(failed_records: list) -> dict:
         "recovered_count": recovered_count,
         "recovered_amount": recovered_amount,
         "recovery_rate_pct": recovery_rate_pct,
+        "recovery_rate_count_pct": recovery_rate_count_pct,
+        "recovery_rate_among_recoverable_pct": recovery_rate_among_recoverable_pct,
+        "recovery_rate_among_recoverable_count_pct": recovery_rate_among_recoverable_count_pct,
+        "gt_recoverable_count": gt_recoverable_count,
+        "gt_recoverable_amount": gt_recoverable_amount,
+        "still_failed_recoverable_count": still_failed_recoverable_count,
+        "still_failed_recoverable_amount": still_failed_recoverable_amount,
         "still_failed_count": still_failed_count,
         "correctly_stopped_count": correctly_stopped_count,
         "correctly_stopped_by_reason": correctly_stopped_by_reason,
@@ -184,11 +211,13 @@ def print_report(metrics: dict, total_records: int):
     # --- Section 2: Recovery Performance ---
     print(f"\n  2. RECOVERY PERFORMANCE")
     print("  " + "-" * 66)
-    print(f"  Revenue recovered             : INR {metrics['recovered_amount']:,}")
-    print(f"  Recovery rate (by amount)     : {metrics['recovery_rate_pct']:.1f}%")
-    print(f"  Payments recovered            : {metrics['recovered_count']} / {metrics['total_failed']}")
-    print(f"  Still failed                  : {metrics['still_failed_count']}")
-    print(f"  Correctly stopped             : {metrics['correctly_stopped_count']}")
+    print(f"  Revenue recovered                         : INR {metrics['recovered_amount']:,}")
+    print(f"  Overall recovery rate (by amount)         : {metrics['recovery_rate_pct']:.1f}%")
+    print(f"  Overall recovery rate (by count)          : {metrics['recovery_rate_count_pct']:.1f}%  ({metrics['recovered_count']} / {metrics['total_failed']})")
+    print(f"  Recovery rate among GT-recoverable (amount): {metrics['recovery_rate_among_recoverable_pct']:.1f}%  [DISTINCT METRIC: INR {metrics['recovered_amount']:,} / INR {metrics['gt_recoverable_amount']:,}]")
+    print(f"  Recovery rate among GT-recoverable (count) : {metrics['recovery_rate_among_recoverable_count_pct']:.1f}%  [DISTINCT METRIC: {metrics['recovered_count']} / {metrics['gt_recoverable_count']} cases]")
+    print(f"  Still failed                              : {metrics['still_failed_count']}")
+    print(f"  Correctly stopped                         : {metrics['correctly_stopped_count']}")
 
     # --- Section 3: Diagnosis Quality ---
     print(f"\n  3. DIAGNOSIS QUALITY ASSESSMENT")
@@ -229,10 +258,13 @@ def print_report(metrics: dict, total_records: int):
         print("  (none)")
 
     # --- Section 6: Missed Recoveries ---
-    print(f"\n  6. MISSED RECOVERY OPPORTUNITIES")
+    print(f"\n  6. MISSED RECOVERY OPPORTUNITIES (GROUND-TRUTH RECOVERABLE)")
     print("  " + "-" * 66)
-    print(f"  Missed recoverable payments     : {metrics['missed_recovery_count']}")
-    print(f"  Missed recoverable revenue      : INR {metrics['missed_recovery_amount']:,}")
+    print(f"  Total GT-recoverable universe             : {metrics['gt_recoverable_count']} cases (INR {metrics['gt_recoverable_amount']:,})")
+    print(f"  Recovered from recoverable universe       : {metrics['recovered_count']} cases ({metrics['recovery_rate_among_recoverable_count_pct']:.1f}%) | INR {metrics['recovered_amount']:,} ({metrics['recovery_rate_among_recoverable_pct']:.1f}%)")
+    print(f"  Missed recoverable payments (T+7 cutoff)  : {metrics['missed_recovery_count']} cases (INR {metrics['missed_recovery_amount']:,})")
+    print(f"  Regulatory status of missed cases         : All {metrics['missed_recovery_count']} missed cases were > 7 days past due date")
+    print(f"                                              at decision time and correctly abandoned under stopping rules.")
 
     # --- Section 7: Outcome by Failure Reason ---
     print(f"\n  7. OUTCOME BY FAILURE REASON")
@@ -313,10 +345,11 @@ def generate_chart(metrics: dict, output_path: Path):
 
     # Recovery rate annotation
     rate = metrics["recovery_rate_pct"]
+    rec_rate = metrics["recovery_rate_among_recoverable_pct"]
     ax.annotate(
-        f"Recovery Rate: {rate:.1f}%",
+        f"Overall Recovery: {rate:.1f}%\nAmong Recoverable: {rec_rate:.1f}%",
         xy=(0.98, 0.95), xycoords="axes fraction",
-        fontsize=13, fontweight="bold", color="#27AE60",
+        fontsize=11, fontweight="bold", color="#27AE60",
         ha="right", va="top",
         bbox=dict(boxstyle="round,pad=0.4", facecolor="#E8F8F5", edgecolor="#27AE60",
                   alpha=0.9),
@@ -356,6 +389,13 @@ def main():
         "recovered_count": metrics["recovered_count"],
         "recovered_amount_inr": metrics["recovered_amount"],
         "recovery_rate_pct": round(metrics["recovery_rate_pct"], 2),
+        "recovery_rate_count_pct": round(metrics["recovery_rate_count_pct"], 2),
+        "recovery_rate_among_recoverable_pct": round(metrics["recovery_rate_among_recoverable_pct"], 2),
+        "recovery_rate_among_recoverable_count_pct": round(metrics["recovery_rate_among_recoverable_count_pct"], 2),
+        "gt_recoverable_count": metrics["gt_recoverable_count"],
+        "gt_recoverable_amount_inr": metrics["gt_recoverable_amount"],
+        "still_failed_recoverable_count": metrics["still_failed_recoverable_count"],
+        "still_failed_recoverable_amount_inr": metrics["still_failed_recoverable_amount"],
         "still_failed_count": metrics["still_failed_count"],
         "correctly_stopped_count": metrics["correctly_stopped_count"],
         "diagnosis_error_count": metrics["diagnosis_error_count"],
@@ -373,6 +413,15 @@ def main():
     dashboard_html_path = base_dir / "output" / "dashboard.html"
     generate_dashboard_html(serializable_metrics, metrics, audit_rows, dashboard_html_path)
     print(f"  Dashboard HTML updated: {dashboard_html_path.resolve()}")
+
+    # Sync to root dashboard.html so both stay updated
+    root_dashboard_path = base_dir / "dashboard.html"
+    try:
+        import shutil
+        shutil.copyfile(dashboard_html_path, root_dashboard_path)
+        print(f"  Root Dashboard HTML synced: {root_dashboard_path.resolve()}")
+    except Exception as e:
+        print(f"  [WARN] Failed to sync root dashboard: {e}")
 
     print("\nReport complete.")
 
@@ -620,17 +669,17 @@ def generate_dashboard_html(summary_metrics: dict, metrics: dict, audit_rows: li
        ========================================================================== */
     .metrics-grid {{
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
+      grid-template-columns: repeat(5, 1fr);
       gap: 16px;
       margin-bottom: 16px;
     }}
 
-    @media (max-width: 1100px) {{
+    @media (max-width: 1280px) {{
       .metrics-grid {{
-        grid-template-columns: repeat(2, 1fr);
+        grid-template-columns: repeat(3, 1fr);
       }}
     }}
-    @media (max-width: 640px) {{
+    @media (max-width: 768px) {{
       .metrics-grid {{
         grid-template-columns: 1fr;
       }}
@@ -1205,20 +1254,26 @@ def generate_dashboard_html(summary_metrics: dict, metrics: dict, audit_rows: li
 
       <div class="metric-card">
         <div class="metric-label">GROSS REVENUE RECOVERED</div>
-        <div class="metric-value val-recovered" id="val-recovered">₹19,484</div>
-        <div class="metric-sub">16 recovered • 21.3% of failed volume</div>
+        <div class="metric-value val-recovered" id="val-recovered">₹35,777</div>
+        <div class="metric-sub" id="sub-recovered">23 recovered • 30.7% of failed volume</div>
       </div>
 
       <div class="metric-card">
-        <div class="metric-label">RECOVERY RATE (AMOUNT)</div>
-        <div class="metric-value" id="val-rate">14.8%</div>
-        <div class="metric-sub">Target recovery benchmark: 12.0% - 18.0%</div>
+        <div class="metric-label">OVERALL RECOVERY RATE</div>
+        <div class="metric-value" id="val-rate">27.1%</div>
+        <div class="metric-sub" id="sub-rate">₹35,777 recovered / ₹1,31,825 at risk</div>
+      </div>
+
+      <div class="metric-card" style="border-left: 3px solid var(--color-recovered);">
+        <div class="metric-label" style="color: var(--color-recovered);">RATE AMONG RECOVERABLE</div>
+        <div class="metric-value val-recovered" id="val-gt-rate">53.1%</div>
+        <div class="metric-sub" id="sub-gt-rate">54.8% count • 23 / 42 GT-recoverable</div>
       </div>
 
       <div class="metric-card">
         <div class="metric-label">NET RECOVERY VALUE</div>
-        <div class="metric-value val-net" id="val-net">₹19,289</div>
-        <div class="metric-sub">Gross ₹19,484 − ₹195 wasted retry fees</div>
+        <div class="metric-value val-net" id="val-net">₹35,582</div>
+        <div class="metric-sub" id="sub-net">Gross ₹35,777 − ₹195 wasted retry fees</div>
       </div>
     </div>
 
@@ -1231,8 +1286,8 @@ def generate_dashboard_html(summary_metrics: dict, metrics: dict, audit_rows: li
       </div>
       <div class="ribbon-cell">
         <div class="ribbon-title">STILL FAILED</div>
-        <div class="ribbon-val" id="val-still-failed">39</div>
-        <div class="text-muted" style="font-size: 10px; font-family: 'JetBrains Mono';">Exhausted retry window</div>
+        <div class="ribbon-val" id="val-still-failed">32</div>
+        <div class="text-muted" style="font-size: 10px; font-family: 'JetBrains Mono';">19 past T+7, 13 unrecoverable</div>
       </div>
       <div class="ribbon-cell">
         <div class="ribbon-title">DIAGNOSIS ACCURACY</div>
@@ -1246,7 +1301,7 @@ def generate_dashboard_html(summary_metrics: dict, metrics: dict, audit_rows: li
       </div>
       <div class="ribbon-cell">
         <div class="ribbon-title">MISSED OPPORTUNITY</div>
-        <div class="ribbon-val" id="val-missed">26 cases (₹47,874)</div>
+        <div class="ribbon-val" id="val-missed">19 cases (₹31,581)</div>
         <div class="text-muted" style="font-size: 10px; font-family: 'JetBrains Mono';">T+7 regulatory cutoff bound</div>
       </div>
     </div>
@@ -1527,12 +1582,34 @@ def generate_dashboard_html(summary_metrics: dict, metrics: dict, audit_rows: li
       const elAtRisk = document.getElementById('val-at-risk');
       const elRecovered = document.getElementById('val-recovered');
       const elRate = document.getElementById('val-rate');
+      const elGtRate = document.getElementById('val-gt-rate');
       const elNet = document.getElementById('val-net');
 
       if (elAtRisk && currentMetrics.total_at_risk_inr) elAtRisk.textContent = formatINR(currentMetrics.total_at_risk_inr);
       if (elRecovered && currentMetrics.recovered_amount_inr) elRecovered.textContent = formatINR(currentMetrics.recovered_amount_inr);
       if (elRate && currentMetrics.recovery_rate_pct !== undefined) elRate.textContent = currentMetrics.recovery_rate_pct.toFixed(1) + '%';
+      if (elGtRate && currentMetrics.recovery_rate_among_recoverable_pct !== undefined) {{
+        elGtRate.textContent = currentMetrics.recovery_rate_among_recoverable_pct.toFixed(1) + '%';
+      }}
       if (elNet && currentMetrics.net_recovery_value_inr) elNet.textContent = formatINR(currentMetrics.net_recovery_value_inr);
+
+      const subRecovered = document.getElementById('sub-recovered');
+      if (subRecovered && currentMetrics.recovered_count) {{
+        const pctVol = ((currentMetrics.recovered_count / (currentMetrics.total_failed || 75)) * 100).toFixed(1);
+        subRecovered.textContent = `${{currentMetrics.recovered_count}} recovered • ${{pctVol}}% of failed volume`;
+      }}
+      const subRate = document.getElementById('sub-rate');
+      if (subRate && currentMetrics.recovered_amount_inr && currentMetrics.total_at_risk_inr) {{
+        subRate.textContent = `${{formatINR(currentMetrics.recovered_amount_inr)}} recovered / ${{formatINR(currentMetrics.total_at_risk_inr)}} at risk`;
+      }}
+      const subGtRate = document.getElementById('sub-gt-rate');
+      if (subGtRate && currentMetrics.recovery_rate_among_recoverable_count_pct !== undefined) {{
+        subGtRate.textContent = `${{currentMetrics.recovery_rate_among_recoverable_count_pct.toFixed(1)}}% count • ${{currentMetrics.recovered_count}} / ${{currentMetrics.gt_recoverable_count || 42}} GT-recoverable`;
+      }}
+      const subNet = document.getElementById('sub-net');
+      if (subNet && currentMetrics.recovered_amount_inr && currentMetrics.false_positive_cost_inr !== undefined) {{
+        subNet.textContent = `Gross ${{formatINR(currentMetrics.recovered_amount_inr)}} − ${{formatINR(currentMetrics.false_positive_cost_inr)}} wasted retry fees`;
+      }}
 
       const elStopped = document.getElementById('val-stopped');
       const elStillFailed = document.getElementById('val-still-failed');
@@ -1549,7 +1626,7 @@ def generate_dashboard_html(summary_metrics: dict, metrics: dict, audit_rows: li
         elWasted.textContent = `${{currentMetrics.false_positive_retries}} retries (${{formatINR(currentMetrics.false_positive_cost_inr || 195)}})`;
       }}
       if (elMissed && currentMetrics.missed_recovery_count !== undefined) {{
-        elMissed.textContent = `${{currentMetrics.missed_recovery_count}} cases (${{formatINR(currentMetrics.missed_recovery_amount_inr || 47874)}})`;
+        elMissed.textContent = `${{currentMetrics.missed_recovery_count}} cases (${{formatINR(currentMetrics.missed_recovery_amount_inr || 31581)}})`;
       }}
 
       renderCharts();

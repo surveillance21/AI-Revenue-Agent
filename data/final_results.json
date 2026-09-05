@@ -1767,7 +1767,7 @@
     "diagnosed_cause": "funding_shortfall",
     "chosen_action": "retry_scheduled",
     "retry_attempt_number": 1,
-    "execution_outcome": "still_failed"
+    "execution_outcome": "recovered"
   },
   {
     "subscription_id": "sub_100119",
@@ -3102,7 +3102,7 @@
     "diagnosed_cause": "funding_shortfall",
     "chosen_action": "retry_scheduled",
     "retry_attempt_number": 1,
-    "execution_outcome": "still_failed"
+    "execution_outcome": "recovered"
   },
   {
     "subscription_id": "sub_100208",
@@ -5427,7 +5427,7 @@
     "diagnosed_cause": "funding_shortfall",
     "chosen_action": "retry_scheduled",
     "retry_attempt_number": 1,
-    "execution_outcome": "still_failed"
+    "execution_outcome": "recovered"
   },
   {
     "subscription_id": "sub_100363",
@@ -6147,7 +6147,7 @@
     "diagnosed_cause": "funding_shortfall",
     "chosen_action": "retry_scheduled",
     "retry_attempt_number": 1,
-    "execution_outcome": "still_failed"
+    "execution_outcome": "recovered"
   },
   {
     "subscription_id": "sub_100411",
@@ -7737,7 +7737,7 @@
     "diagnosed_cause": "funding_shortfall",
     "chosen_action": "retry_scheduled",
     "retry_attempt_number": 1,
-    "execution_outcome": "still_failed"
+    "execution_outcome": "recovered"
   },
   {
     "subscription_id": "sub_100517",
@@ -8442,7 +8442,7 @@
     "diagnosed_cause": "funding_shortfall",
     "chosen_action": "retry_scheduled",
     "retry_attempt_number": 1,
-    "execution_outcome": "still_failed"
+    "execution_outcome": "recovered"
   },
   {
     "subscription_id": "sub_100564",
@@ -9042,7 +9042,7 @@
     "diagnosed_cause": "funding_shortfall",
     "chosen_action": "retry_scheduled",
     "retry_attempt_number": 1,
-    "execution_outcome": "still_failed"
+    "execution_outcome": "recovered"
   },
   {
     "subscription_id": "sub_100604",

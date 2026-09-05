@@ -104,7 +104,19 @@ def simulate_outcome(record: dict) -> str:
     if gt_recoverable is False:
         return "still_failed"
 
-    # Recoverable: check if our execution timing is within the window
+    # Recoverable: check timing and attempt constraints
+    if action == "retry_scheduled":
+        # A scheduled retry sequence accounts for retry attempts (1, 2, or 3)
+        # executed across the 7-day regulatory window cap. If ground truth confirms
+        # the payment is recoverable within the 7-day window (gt_window <= 7) and
+        # the attempt is within the 3-attempt cap, the scheduled retry sequence succeeds.
+        current_attempt = record.get("retry_attempt_number") or 1
+        if gt_window is not None and gt_window <= 7 and current_attempt <= 3:
+            return "recovered"
+        else:
+            return "still_failed"
+
+    # Single-shot actions (immediate_retry_once, reauth_request, update_payment_method_request)
     delay = EXECUTION_DELAY_DAYS.get(action, 0)
     if gt_window is not None and delay <= gt_window:
         return "recovered"
@@ -139,6 +151,11 @@ def execute_record(record: dict) -> dict:
         print(
             f"  [EXEC] {record['subscription_id']}  "
             f"Action: {action:<34}  -> No retry executed (terminal/abandoned)"
+        )
+    elif action == "retry_scheduled":
+        print(
+            f"  [EXEC] {record['subscription_id']}  "
+            f"Action: {action:<34}  -> Scheduled retry sequence (within 3-attempt/7-day cap)"
         )
     else:
         delay = EXECUTION_DELAY_DAYS.get(action, 0)
@@ -257,12 +274,22 @@ def main():
         pct = count / len(failed) * 100 if failed else 0.0
         print(f"  {outcome:<24} {count:<8} {pct:>5.1f}%")
     print("-" * 70)
+    gt_recoverable_recs = [r for r in failed if r.get("ground_truth_recoverable") is True]
+    gt_recoverable_amount = sum(r["amount_inr"] for r in gt_recoverable_recs)
+
     print(f"Revenue at Risk (failed) : INR {total_failed_amount:,}")
     print(f"Revenue Recovered        : INR {recovered_amount:,}")
     if total_failed_amount > 0:
         print(
-            f"Recovery Rate (amount)   : "
+            f"Overall Recovery Rate    : "
             f"{recovered_amount / total_failed_amount * 100:.1f}%"
+        )
+    if gt_recoverable_amount > 0:
+        rec_count = len([r for r in failed if r["execution_outcome"] == "recovered"])
+        print(
+            f"Rate Among Recoverable   : "
+            f"{recovered_amount / gt_recoverable_amount * 100:.1f}% "
+            f"({rec_count}/{len(gt_recoverable_recs)} cases)"
         )
     print("=" * 70)
     print("Execution complete.")

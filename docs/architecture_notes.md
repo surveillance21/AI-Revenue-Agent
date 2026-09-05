@@ -176,13 +176,14 @@ flowchart TD
 |---|---|
 | **Batch Volume** | 700 subscriptions (625 successful, 75 failed) |
 | **Total Revenue at Risk** | **₹131,825** |
-| **Gross Recovered Revenue** | **₹19,484** (14.8% recovery rate) |
-| **Successfully Recovered Subscriptions** | 16 subscriptions |
+| **Gross Recovered Revenue** | **₹35,777** (27.1% overall recovery rate) |
+| **Recovery Rate Among GT-Recoverable** | **53.1%** by amount (₹35,777 / ₹67,358) • **54.8%** by count (23 / 42) |
+| **Successfully Recovered Subscriptions** | 23 subscriptions |
 | **Correctly Stopped Unrecoverable Cases** | 20 subscriptions (zero wasted effort) |
 | **Diagnosis Misclassification Errors** | **0** (100% accuracy) |
 | **False-Positive Wasted Retries** | 13 attempts (₹195 total cost) |
-| **Missed Recoveries (T+7 Compliance Cutoff)** | 26 subscriptions (₹47,874) |
-| **Net Recovered Value** | **₹19,289** |
+| **Missed Recoveries (T+7 Compliance Cutoff)** | 19 subscriptions (₹31,581) |
+| **Net Recovered Value** | **₹35,582** |
 
 ---
 
