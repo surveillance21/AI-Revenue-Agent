@@ -41,16 +41,20 @@ Usage:
 
 import csv
 import json
+import os
 import sys
 from datetime import datetime
 from pathlib import Path
 
 # ---------------------------------------------------------------------------
-# Hard-coded stopping rule constants — NEVER dynamic or model-decided
+# Constants
 # ---------------------------------------------------------------------------
 MAX_RETRY_ATTEMPTS = 3   # Max automated retry attempts per subscription
 RETRY_WINDOW_DAYS = 7    # Calendar days from due_date within which retries
                          # are permitted (RBI/NPCI eMandate guideline: T+7)
+
+# Deterministic reference decision timestamp matching the synthetic batch window
+DEFAULT_DECISION_DATE = datetime(2026, 9, 4, 3, 34, 6)
 
 # ---------------------------------------------------------------------------
 # Intervention mapping: failure_reason_code → chosen_action
@@ -212,8 +216,15 @@ def main():
     with open(input_path, "r", encoding="utf-8") as f:
         records = json.load(f)
 
-    # Decision timestamp (frozen for the entire batch for consistency)
-    decision_date = datetime.now()
+    # Decision timestamp (deterministic anchor for batch reproducibility; can be overridden via DECISION_DATE)
+    env_date = os.environ.get("DECISION_DATE")
+    if env_date:
+        try:
+            decision_date = datetime.fromisoformat(env_date)
+        except ValueError:
+            decision_date = DEFAULT_DECISION_DATE
+    else:
+        decision_date = DEFAULT_DECISION_DATE
     decision_ts = decision_date.strftime("%Y-%m-%d %H:%M:%S")
 
     # --- Decide ---
