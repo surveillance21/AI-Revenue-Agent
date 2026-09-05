@@ -49,8 +49,8 @@ AUDIT_CSV   = BASE_DIR / "output" / "audit_log.csv"
 METRICS_JSON = BASE_DIR / "output" / "metrics_summary.json"
 
 # Models used per provider
-GEMINI_MODEL = "gemini-1.5-flash"          # fast, cheap, generous free tier
-CLAUDE_MODEL = "claude-3-5-haiku-20241022" # fast Haiku — no framework needed
+GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-flash-latest")
+CLAUDE_MODEL = os.environ.get("CLAUDE_MODEL", "claude-3-5-haiku-20241022")
 
 
 def load_audit() -> list[dict]:
@@ -143,39 +143,53 @@ def build_prompt(question: str, metrics: dict, audit_summary: str) -> str:
 # ---------------------------------------------------------------------------
 
 def call_gemini(prompt: str, api_key: str) -> str:
-    url = (
-        f"https://generativelanguage.googleapis.com/v1beta/models/"
-        f"{GEMINI_MODEL}:generateContent?key={api_key}"
+    models_to_try = (
+        [GEMINI_MODEL]
+        if "GEMINI_MODEL" in os.environ
+        else ["gemini-flash-latest", "gemini-flash-lite-latest", "gemini-2.5-flash"]
     )
-    payload = {
-        "contents": [
-            {
-                "parts": [{"text": prompt}]
-            }
-        ],
-        "generationConfig": {
-            "temperature": 0.2,
-            "maxOutputTokens": 1024,
-        },
-    }
-    body = json.dumps(payload).encode()
-    req  = urllib.request.Request(
-        url,
-        data=body,
-        headers={"Content-Type": "application/json"},
-        method="POST",
-    )
-    try:
-        with urllib.request.urlopen(req, timeout=60) as resp:
-            data = json.loads(resp.read())
-    except urllib.error.HTTPError as exc:
-        detail = exc.read().decode(errors="replace")
-        sys.exit(f"Gemini API error {exc.code}: {detail}")
+    last_err = None
 
-    try:
-        return data["candidates"][0]["content"]["parts"][0]["text"].strip()
-    except (KeyError, IndexError) as exc:
-        sys.exit(f"Unexpected Gemini response shape: {exc}\nFull response: {data}")
+    for model in models_to_try:
+        url = (
+            f"https://generativelanguage.googleapis.com/v1beta/models/"
+            f"{model}:generateContent?key={api_key}"
+        )
+        payload = {
+            "contents": [
+                {
+                    "parts": [{"text": prompt}]
+                }
+            ],
+            "generationConfig": {
+                "temperature": 0.2,
+                "maxOutputTokens": 1024,
+            },
+        }
+        body = json.dumps(payload).encode()
+        req  = urllib.request.Request(
+            url,
+            data=body,
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=60) as resp:
+                data = json.loads(resp.read())
+            return data["candidates"][0]["content"]["parts"][0]["text"].strip()
+        except urllib.error.HTTPError as exc:
+            detail = exc.read().decode(errors="replace")
+            last_err = f"Gemini API error {exc.code} on '{model}': {detail}"
+            # If 404 (model deprecated) or 503 (temporary capacity), try next candidate
+            if exc.code in (404, 503) and model != models_to_try[-1]:
+                continue
+            sys.exit(last_err)
+        except (KeyError, IndexError) as exc:
+            sys.exit(f"Unexpected Gemini response shape: {exc}\nFull response: {data}")
+
+    if last_err:
+        sys.exit(last_err)
+    sys.exit("ERROR: No response received from Gemini.")
 
 
 # ---------------------------------------------------------------------------
