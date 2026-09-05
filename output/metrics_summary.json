@@ -1,0 +1,16 @@
+{
+  "total_records": 700,
+  "total_failed": 75,
+  "total_at_risk_inr": 131825,
+  "recovered_count": 16,
+  "recovered_amount_inr": 19484,
+  "recovery_rate_pct": 14.78,
+  "still_failed_count": 39,
+  "correctly_stopped_count": 20,
+  "diagnosis_error_count": 0,
+  "false_positive_retries": 13,
+  "false_positive_cost_inr": 195,
+  "missed_recovery_count": 26,
+  "missed_recovery_amount_inr": 47874,
+  "net_recovery_value_inr": 19289
+}

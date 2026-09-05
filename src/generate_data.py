@@ -26,7 +26,7 @@ RANDOM_SEED = 42
 random.seed(RANDOM_SEED)
 
 # Constants for Generation
-TOTAL_RECORDS = 150
+TOTAL_RECORDS = 700
 SUCCESS_PROBABILITY = 0.90  # 90% success, 10% failed
 
 # Failure reason codes and their specified relative distribution weights
